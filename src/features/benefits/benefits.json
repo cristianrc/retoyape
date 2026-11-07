@@ -1,0 +1,38 @@
+[
+  {
+    "id": "1",
+    "title": "Café de barrio",
+    "description": "Tu pausa favorita tiene un beneficio especial. Válido en bebidas y pastelería.",
+    "promotion": "20% de descuento",
+    "address": "Av. Larco 600, Miraflores",
+    "latitude": -12.1234,
+    "longitude": -77.0301,
+    "applicableBrands": ["VISA"],
+    "category": "CAFETERÍAS",
+    "color": "#DAFAF5"
+  },
+  {
+    "id": "2",
+    "title": "Mesa compartida",
+    "description": "Disfruta una experiencia gastronómica con tu tarjeta Yape. Beneficio de demostración.",
+    "promotion": "30% de descuento",
+    "address": "Av. Pardo 420, Miraflores",
+    "latitude": -12.1187,
+    "longitude": -77.0342,
+    "applicableBrands": ["VISA", "MASTERCARD"],
+    "category": "RESTAURANTES",
+    "color": "#FCE9FF"
+  },
+  {
+    "id": "3",
+    "title": "Cineplanet",
+    "description": "Los mejores estrenos se disfrutan en compañía. Beneficio de demostración en entradas seleccionadas.",
+    "promotion": "2x1 en entradas",
+    "address": "Av. Benavides 700, Miraflores",
+    "latitude": -12.1257,
+    "longitude": -77.0258,
+    "applicableBrands": ["MASTERCARD"],
+    "category": "ENTRETENIMIENTO",
+    "color": "#FFF0D3"
+  }
+]

@@ -1,0 +1,18 @@
+[
+  {
+    "cardId": "card_001",
+    "alias": "Crédito Visa",
+    "maskedPan": "**** **** **** 1234",
+    "brand": "VISA",
+    "expiry": "12/28",
+    "accountId": "acc_101"
+  },
+  {
+    "cardId": "card_002",
+    "alias": "Débito Mastercard",
+    "maskedPan": "**** **** **** 5678",
+    "brand": "MASTERCARD",
+    "expiry": "06/29",
+    "accountId": "acc_101"
+  }
+]

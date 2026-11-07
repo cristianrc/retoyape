@@ -1,0 +1,26 @@
+apply plugin: 'com.ncorti.ktfmt.gradle'
+
+ktfmt { kotlinLangStyle() }
+
+apply plugin: 'com.android.library'
+apply plugin: 'org.jetbrains.kotlin.android'
+apply plugin: 'com.facebook.react'
+
+react {
+    jsRootDir = file('../src')
+    libraryName = 'IoNativeSpec'
+    codegenJavaPackageName = 'com.io.nativekit'
+}
+
+android {
+    namespace 'com.io.nativekit'
+    compileSdk rootProject.ext.compileSdkVersion
+    defaultConfig { minSdk rootProject.ext.minSdkVersion }
+    sourceSets.main.java.srcDirs += ["$buildDir/generated/source/codegen/java"]
+}
+
+dependencies {
+    implementation 'com.facebook.react:react-android'
+    implementation 'com.google.android.gms:play-services-maps:19.2.0'
+    testImplementation 'junit:junit:4.13.2'
+}

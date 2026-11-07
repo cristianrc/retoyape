@@ -1,97 +1,133 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# Reto Yape
 
-# Getting Started
+Aplicación Android con React Native, TypeScript y Kotlin. Incluye login con Firebase, cuentas y tarjetas de prueba, consulta segura de datos y beneficios en un mapa sincronizado con un carrusel.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+## Instalación
 
-## Step 1: Start Metro
+Requisitos: Node 24, JDK 17, Android Studio, SDK 37, Build Tools 37.0.0, NDK 27.1.12297006 y un dispositivo Android con Google Play Services.
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+```bash
+npm ci
+```
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+La configuración local se encuentra en `android/local.properties`, excluido de Git:
 
-```sh
-# Using npm
+```properties
+sdk.dir=/ruta/al/Android/sdk
+MAPS_API_KEY=clave_de_maps
+```
+
+La clave requiere **Maps SDK for Android** habilitado y restricciones por API, paquete `com.iochallenge` y SHA-1 del certificado. El comando `cd android && ./gradlew signingReport` muestra las huellas. `MAPS_API_KEY` también puede definirse como variable de entorno y tiene prioridad sobre el archivo local.
+
+Firebase requiere una app Android con el mismo paquete y el proveedor **Correo electrónico/contraseña** habilitado. El archivo descargado de Firebase Console se coloca en `android/app/google-services.json`, también excluido de Git.
+
+La aplicación se inicia con el emulador abierto y dos terminales en la raíz del proyecto:
+
+```bash
 npm start
-
-# OR using Yarn
-yarn start
 ```
 
-## Step 2: Build and run your app
-
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
-
-### Android
-
-```sh
-# Using npm
+```bash
 npm run android
-
-# OR using Yarn
-yarn android
 ```
 
-### iOS
+Debug obtiene el JavaScript desde Metro y permite Fast Refresh. Si falla la conexión, `adb reverse tcp:8081 tcp:8081` habilita el acceso desde el emulador. Los cambios en Kotlin, Gradle o las claves requieren recompilar.
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+## Cuenta de prueba
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
+| Correo              | Contraseña      |
+| ------------------- | --------------- |
+| `demo@retoyape.com` | `RetoYape2026!` |
 
-```sh
-bundle install
+El usuario está creado en Firebase Authentication. Un login correcto abre el Dashboard. El SDK restaura la sesión al reiniciar; **TÚ → Salir** la cierra y desmonta la navegación privada. La app no ofrece registro ni almacena la contraseña.
+
+## Estructura
+
+```text
+src/
+  app/                  Catálogo compartido y encabezado con sesión
+  features/
+    auth/               Login, sesión y adaptador Firebase
+    products/           Cuentas, tarjetas y apertura segura
+    benefits/           Elegibilidad, filtros y sincronización
+  shared/               Tema, iconos y componentes visuales
+packages/io-native/     Contratos TypeScript y módulo Android propio
 ```
 
-Then, and every time you update your native dependencies, run:
+Las reglas de negocio son funciones independientes de React. `CatalogRepository`, `Authentication` y `SecurityGateway` permiten sustituir la infraestructura en pruebas. Context comparte catálogo y sesión; cada pantalla conserva su estado local.
 
-```sh
-bundle exec pod install
+## API nativa
+
+`@io/native` expone un componente Fabric y un TurboModule con Codegen. El mapa utiliza directamente Google Maps SDK, sin wrappers de React Native.
+
+```tsx
+<CustomMap
+  markers={markers}
+  selectedMarkerId={selectedId}
+  cameraResetKey={cameraResetKey}
+  onMarkerPress={event => setSelectedId(event.nativeEvent.markerId)}
+  onMapReady={() => setMapReady(true)}
+  onMapError={() => setMapUnavailable(true)}
+/>
 ```
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+Cada marcador contiene `id`, `title`, `latitude` y `longitude`. `selectedMarkerId` resalta la selección; incrementar `cameraResetKey` encuadra todos los marcadores. El nativo descarta IDs repetidos y coordenadas inválidas. `onMapReady` confirma que el controlador está disponible; no garantiza la autorización de la clave ni la descarga de tiles.
 
-```sh
-# Using npm
-npm run ios
+La vista segura recibe únicamente `cardId` y un token opaco:
 
-# OR using Yarn
-yarn ios
+```ts
+const token = await IoSecurity.requestMockSecureToken(cardId);
+await IoSecurity.openSecureView(cardId, token);
 ```
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+El hook `useSecureCard` controla errores, bloquea aperturas simultáneas y renueva el token en cada solicitud. La suscripción a eventos se retira al desmontar:
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+```ts
+useEffect(() => {
+  const subscription = IoSecurity.onSecureEvent(handleSecureEvent);
+  return () => subscription.remove();
+}, []);
+```
 
-## Step 3: Modify your app
+| Evento               | Información                                         |
+| -------------------- | --------------------------------------------------- |
+| `onSecureViewOpened` | `cardId`                                            |
+| `onCardDataShown`    | `cardId`                                            |
+| `onValidationError`  | `cardId`, `code`: `TOKEN_INVALID` o `TOKEN_EXPIRED` |
+| `onSecureViewClosed` | `cardId`, `reason`: `USER_DISMISS` o `TIMEOUT`      |
 
-Now that you have successfully run the app, let's make changes!
+Todos los eventos incluyen `type`, `cardId`, `code` y `reason`; los campos no aplicables son strings vacíos. La apertura también puede rechazar `CARD_NOT_FOUND`, `ACTIVITY_UNAVAILABLE`, `SESSION_ACTIVE` u `OPEN_FAILED`.
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
+Los casos de token inválido y vencido se verifican en las pruebas automatizadas. El contrato conserva `requestDemoToken` para pruebas en debug; esta operación devuelve `DEMO_UNAVAILABLE` en release. La interfaz de la app no incluye controles de prueba.
 
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
+## Pruebas y formato
 
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
+```bash
+npm test
+npm run coverage
+npm run check
+```
 
-## Congratulations! :tada:
+`npm test` ejecuta Jest/RNTL y JUnit con un solo comando. La cobertura TypeScript exige al menos 70 % en statements, branches, functions y lines. Los reportes se generan en `coverage/lcov-report/index.html` y `packages/io-native/android/build/reports/tests/testDebugUnitTest/index.html`.
 
-You've successfully run and modified your React Native App. :partying_face:
+`npm run check` comprueba formato, tipos, lint y pruebas. Prettier formatea TypeScript, JavaScript y documentación; ktfmt aplica el estilo Kotlin con cuatro espacios. Los comandos `npm run format` y `npm run format:native` corrigen el formato.
 
-### Now what?
+## Seguridad y verificación
 
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
+- PAN completo, CVV y titular ficticios existen solo en Kotlin. No cruzan hacia JavaScript.
+- El token usa HMAC, caduca a los 60 segundos y se vincula a una tarjeta. El emisor es local y sirve únicamente para esta demostración.
+- La Activity no está exportada. `FLAG_SECURE` bloquea capturas; una máscara cubre el contenido al pausar. La sesión vence a los 45 segundos, incluido el tiempo en segundo plano.
+- **Ocultar datos** y Atrás cierran la sesión. El código propio no registra ni persiste tokens o datos sensibles.
 
-# Troubleshooting
+La verificación comprende captura bloqueada, Home/Recientes, retorno desde segundo plano, timeout y cierre manual.
 
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
+## APK
 
-# Learn More
+```bash
+cd android
+./gradlew :app:assembleRelease -PreactNativeArchitectures=arm64-v8a
+```
 
-To learn more about React Native, take a look at the following resources:
+El APK se genera en `android/app/build/outputs/apk/release/app-release.apk` y funciona sin Metro. La firma utiliza el certificado debug para la evaluación; la distribución productiva requiere un certificado propio. El alcance es Android; iOS y la publicación del paquete no están incluidos.
 
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+La fuente Plus Jakarta Sans y su licencia OFL están en `packages/io-native/android/src/main/assets/fonts/`. Las imágenes se incluyen en `src/assets/` y los iconos se dibujan con vectores.
